@@ -201,3 +201,95 @@ fn main() -> ExitCode {
 
     ExitCode::SUCCESS
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bytes::{Buf, Bytes};
+
+    #[test]
+    fn test_run() -> Result<(), String> {
+        let input = Bytes::from(
+            "3   4
+4   3
+2   5
+1   3
+3   9
+3   3
+",
+        );
+
+        let (dist, sim) = run(input.reader())?;
+        assert_eq!(dist, 11);
+        assert_eq!(sim, 31);
+        Ok(())
+    }
+
+    #[test]
+    fn test_empty() -> Result<(), String> {
+        let input = Bytes::from(
+            "3   4
+4   3
+
+1   3
+3   9
+3   3
+",
+        );
+
+        match run(input.reader()) {
+            Ok((_d, _s)) => Err("expected error".to_string()),
+            Err(e) => {
+                assert_eq!(e.to_string(), "no left value");
+                Ok(())
+            }
+        }?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_no_right_value() -> Result<(), String> {
+        let input = Bytes::from(
+            "3   4
+4   3
+3
+1   3
+3   9
+3   3
+",
+        );
+
+        match run(input.reader()) {
+            Ok((_d, _s)) => Err("expected error".to_string()),
+            Err(e) => {
+                assert_eq!(e.to_string(), "no right value");
+                Ok(())
+            }
+        }?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_nan() -> Result<(), String> {
+        let input = Bytes::from(
+            "3   4
+4   3
+a   b
+3   9
+3   3
+",
+        );
+
+        match run(input.reader()) {
+            Ok((_d, _s)) => Err("expected error".to_string()),
+            Err(e) => {
+                assert_eq!(e.to_string(), "invalid digit found in string");
+                Ok(())
+            }
+        }?;
+
+        Ok(())
+    }
+}
