@@ -72,6 +72,7 @@ license-headers: ## Update license headers.
 				'*.py' '**/*.py' \
 				'*.yaml' '**/*.yaml' \
 				'*.yml' '**/*.yml' \
+				'*.rs' '**/*.rs' \
 		); \
 		name=$$(git config user.name); \
 		if [ "$${name}" == "" ]; then \
@@ -168,3 +169,20 @@ yamllint: .venv/.installed ## Runs the yamllint linter.
 			extraargs="-f github"; \
 		fi; \
 		.venv/bin/yamllint --strict -c .yamllint.yaml $${extraargs} $${files}
+
+define GEN_RULE
+.PHONY: day$1
+day$1: ## Make each day's solution binary.
+	make -C src/day$1/
+	mkdir -p ./bin/
+	cp src/day$1/day$1 ./bin/
+endef
+
+DAYS = 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+$(foreach var,$(DAYS),$(eval $(call GEN_RULE,$(var))))
+
+## Maintenance
+#####################################################################
+
+clean: ## Clean up build files.
+	rm -rf ./bin/

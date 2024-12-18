@@ -1,0 +1,11 @@
+[package]
+name = "advent2024"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bin/day1"
+test = false
+bench = false
+
+[dependencies]
