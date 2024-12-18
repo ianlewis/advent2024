@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// https://adventofcode.com/2024/day/1
 // --- Day 1: Historian Hysteria ---
 // The Chief Historian is always present for the big Christmas sleigh launch, but nobody has seen him
 // in months! Last anyone heard, he was visiting locations that are historically significant to the
@@ -144,24 +145,15 @@ fn run(r: impl BufRead) -> Result<(i64, i64), String> {
         let line_str = line.unwrap();
         let mut iter = str::split_whitespace(&line_str);
 
-        // TODO: use context for matching options.
-        let f_val = match iter.next() {
+        first.push(match iter.next() {
             Some(v) => v.parse::<i64>().map_err(|err| err.to_string()),
-            None => {
-                return Err("no left value".to_string());
-            }
-        };
-        let f_val_u = f_val?;
-        first.push(f_val_u);
+            None => Err("no left value".to_string()),
+        }?);
 
-        let s_val = match iter.next() {
+        second.push(match iter.next() {
             Some(v) => v.parse::<i64>().map_err(|err| err.to_string()),
-            None => {
-                return Err("no right value".to_string());
-            }
-        };
-        let s_val_u = s_val?;
-        second.push(s_val_u);
+            None => Err("no right value".to_string()),
+        }?);
     }
 
     // Sort both lists.
