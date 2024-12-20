@@ -181,6 +181,17 @@ endef
 DAYS = 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
 $(foreach var,$(DAYS),$(eval $(call GEN_RULE,$(var))))
 
+## Tests
+#####################################################################
+
+unit-tests:
+	@set -euo pipefail;\
+		for i in src/day*; do\
+			cd $$i;\
+			cargo test;\
+			cd ../../;\
+		done;
+
 ## Maintenance
 #####################################################################
 

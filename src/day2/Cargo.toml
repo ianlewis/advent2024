@@ -1,0 +1,12 @@
+[package]
+name = "day2"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "day2"
+path = "day2.rs"
+test = true
+bench = false
+
+[dependencies]
