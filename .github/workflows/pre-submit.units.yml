@@ -64,7 +64,7 @@ jobs:
           rustup default stable
       - run: |
           make unit-tests
-     
+
   # formatting
   ###############################
 
