@@ -68,7 +68,7 @@ use std::str;
 
 // Program day2 reads the input on stdin and prints the total number of safe reports.
 
-fn is_safe(list: Vec<i64>, increasing: bool, skip: usize) -> usize {
+fn is_safe(list: &Vec<i64>, increasing: bool, skip: usize) -> usize {
     let mut prev = 0;
     for (i, n) in list.iter().enumerate() {
         if i == skip && skip != 0 {
@@ -118,8 +118,7 @@ fn run(r: impl BufRead) -> Result<(i64, i64), String> {
         }
 
         let increasing = list[0] < list[1];
-        // TODO: Don't clone list.
-        let index = is_safe(list.clone(), increasing, 0);
+        let index = is_safe(&list, increasing, 0);
         if index == 0 {
             safe_num += 1;
             semi_safe_num += 1;
@@ -129,10 +128,10 @@ fn run(r: impl BufRead) -> Result<(i64, i64), String> {
         if index < 3 {
             // Check if either the first or second value can be removed.
             if list.len() >= 3 {
-                if is_safe(list[1..].to_vec(), list[1] < list[2], 0) == 0 {
+                if is_safe(&list[1..].to_vec(), list[1] < list[2], 0) == 0 {
                     semi_safe_num += 1;
                     continue;
-                } else if is_safe(list.clone(), list[0] < list[2], 1) == 0 {
+                } else if is_safe(&list, list[0] < list[2], 1) == 0 {
                     semi_safe_num += 1;
                     continue;
                 }
@@ -140,7 +139,7 @@ fn run(r: impl BufRead) -> Result<(i64, i64), String> {
         }
         if index > 1 {
             // Try skipping the level at index.
-            let index2 = is_safe(list[index - 1..].to_vec(), increasing, 1);
+            let index2 = is_safe(&list[index - 1..].to_vec(), increasing, 1);
             if index2 == 0 {
                 semi_safe_num += 1;
             }
