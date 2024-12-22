@@ -14,6 +14,7 @@
 
 // https://adventofcode.com/2024/day/2
 // --- Day 2: Red-Nosed Reports ---
+//
 // Fortunately, the first location The Historians want to search isn't a long walk
 // from the Chief Historian's office.
 //
@@ -57,17 +58,46 @@
 // 1 3 2 4 5: Unsafe because 1 3 is increasing but 3 2 is decreasing.
 // 8 6 4 4 1: Unsafe because 4 4 is neither an increase or a decrease.
 // 1 3 6 7 9: Safe because the levels are all increasing by 1, 2, or 3.
+//
 // So, in this example, 2 reports are safe.
 //
 // Analyze the unusual data from the engineers. How many reports are safe?
+//
+// --- Part Two ---
+// The engineers are surprised by the low number of safe reports until they realize they forgot to
+// tell you about the Problem Dampener.
+//
+// The Problem Dampener is a reactor-mounted module that lets the reactor safety systems tolerate a
+// single bad level in what would otherwise be a safe report. It's like the bad level never
+// happened!
+//
+// Now, the same rules apply as before, except if removing a single level from an unsafe report
+// would make it safe, the report instead counts as safe.
+//
+// More of the above example's reports are now safe:
+//
+// 7 6 4 2 1: Safe without removing any level.
+// 1 2 7 8 9: Unsafe regardless of which level is removed.
+// 9 7 6 2 1: Unsafe regardless of which level is removed.
+// 1 3 2 4 5: Safe by removing the second level, 3.
+// 8 6 4 4 1: Safe by removing the third level, 4.
+// 1 3 6 7 9: Safe without removing any level.
+//
+// Thanks to the Problem Dampener, 4 reports are actually safe!
+//
+// Update your analysis by handling situations where the Problem Dampener can remove a single level
+// from unsafe reports. How many reports are now safe?
 
 use std::io;
 use std::io::BufRead;
 use std::process::ExitCode;
 use std::str;
 
-// Program day2 reads the input on stdin and prints the total number of safe reports.
+// Program day2 reads the input on stdin and prints the total number of safe reports and the number
+// of semi-safe (reports where omitting one level results in a safe report)..
 
+// is_safe returns the index at which an unsafe value was found or zero if the report is safe (zero
+// cannot be the index where a report is found to be unsafe).
 fn is_safe(list: &Vec<i64>, increasing: bool, skip: usize) -> usize {
     let mut prev = 0;
     for (i, n) in list.iter().enumerate() {
