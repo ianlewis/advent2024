@@ -6,7 +6,4 @@ node_modules/
 .venv
 
 # Added by cargo
-/target
-
-# Binary files.
-bin/*
+target
