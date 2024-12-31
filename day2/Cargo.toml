@@ -5,7 +5,7 @@ edition = "2021"
 
 [[bin]]
 name = "day2"
-path = "day2.rs"
+path = "src/main.rs"
 test = true
 bench = false
 

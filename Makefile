@@ -170,15 +170,16 @@ yamllint: .venv/.installed ## Runs the yamllint linter.
 		fi; \
 		.venv/bin/yamllint --strict -c .yamllint.yaml $${extraargs} $${files}
 
+DAYS = day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 day18 day19 day20 day21 day22 day23 day24
+
+all: $(DAYS) ## Build all solutions
+
 define GEN_RULE
-.PHONY: day$1
-day$1: ## Make each day's solution binary.
-	make -C src/day$1/
-	mkdir -p ./bin/
-	cp src/day$1/day$1 ./bin/
+.PHONY: $1
+$1: ## Make each day's solution binary.
+	cargo build --manifest-path "$1/Cargo.toml"
 endef
 
-DAYS = 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
 $(foreach var,$(DAYS),$(eval $(call GEN_RULE,$(var))))
 
 ## Tests
@@ -186,14 +187,15 @@ $(foreach var,$(DAYS),$(eval $(call GEN_RULE,$(var))))
 
 unit-tests:
 	@set -euo pipefail;\
-		for i in src/day*; do\
-			cd $$i;\
-			cargo test;\
-			cd ../../;\
+		for i in day*; do\
+			cargo test --manifest-path "$$i/Cargo.toml";\
 		done;
 
 ## Maintenance
 #####################################################################
 
 clean: ## Clean up build files.
-	rm -rf ./bin/
+	@set -euo pipefail;\
+		for i in day*; do\
+			rm -rf "$$i/target";\
+		done;
