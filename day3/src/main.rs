@@ -44,7 +44,6 @@
 
 // Program day3 reads the program on stdin and prints the sum of all mul() operations.
 
-// use std::io::{self, BufRead, BufReader, ErrorKind, Read};
 use std::error;
 use std::io;
 use std::io::{BufRead, Read};
