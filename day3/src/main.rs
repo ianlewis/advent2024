@@ -46,19 +46,17 @@
 
 use std::error;
 use std::io;
-use std::io::{BufRead, Read};
+use std::io::BufRead;
 use std::process;
 
 pub struct Lexer<R: io::Read> {
     reader: io::BufReader<R>,
-    col: usize,
 }
 
 impl<R: io::Read> Lexer<R> {
     pub fn new(r: R) -> Self {
         Lexer {
             reader: io::BufReader::new(r),
-            col: 1,
         }
     }
 
@@ -69,44 +67,30 @@ impl<R: io::Read> Lexer<R> {
         let buf = std::str::from_utf8(self.reader.fill_buf()?)?;
         if buf.chars().count() < n {
             return Ok(buf.to_string());
-            // return Ok(String::new());
         }
         Ok(buf[..n].to_string())
     }
 
-    fn peek_equal(&mut self, s: &String) -> Result<bool, Box<dyn error::Error>> {
-        let buf = self.peek(s.chars().count())?;
-        Ok(buf == *s)
-    }
-
-    fn next_char(&mut self) -> Result<Option<char>, Box<dyn error::Error>> {
-        let mut buf = [0; 1];
-        match self.reader.read_exact(&mut buf) {
-            Ok(_) => {
-                let c = buf[0] as char;
-                self.col += 1;
-                Ok(Some(c))
-            }
-            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => Ok(None), // Handle EOF
-            Err(e) => Err(e.into()),
-        }
-    }
-
     fn read_until(&mut self, tok: String) -> Result<bool, Box<dyn error::Error>> {
-        while !self.peek_equal(&tok)? {
-            let c = self.next_char()?;
-            if c.is_none() {
+        loop {
+            let buf = self.peek(tok.chars().count())?;
+            if buf.len() == 0 {
+                // EOF
                 return Ok(false);
             }
+            if buf == tok {
+                self.reader.consume(buf.len());
+                return Ok(true);
+            } else {
+                self.reader.consume(1);
+            }
         }
-
-        self.reader.consume(tok.len());
-        Ok(true)
     }
 
     fn read_tok(&mut self, tok: String) -> Result<bool, Box<dyn error::Error>> {
-        if self.peek_equal(&tok)? {
-            self.reader.consume(tok.len());
+        let buf = self.peek(tok.chars().count())?;
+        if buf == tok {
+            self.reader.consume(buf.len());
             return Ok(true);
         }
         Ok(false)
@@ -174,6 +158,16 @@ mod tests {
             Bytes::from("xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))");
         let result = run(input.reader())?;
         assert_eq!(result, 161);
+        Ok(())
+    }
+
+    #[test]
+    fn test_lexer_read_until() -> Result<(), Box<dyn error::Error>> {
+        let input = Bytes::from("foobar");
+        let mut lex = Lexer::new(input.reader());
+        let found = lex.read_until("bar".to_string()).unwrap();
+
+        assert_eq!(found, true);
         Ok(())
     }
 
