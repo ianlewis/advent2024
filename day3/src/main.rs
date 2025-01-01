@@ -12,16 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Program day3 reads the program on stdin and prints the sum of all mul() operations.
+// Program day3 reads the program on stdin and prints the sum of all mul() operations and the sum
+// of all mul() operations when respecting do() and don't().
 
 use std::error;
 use std::io;
-use std::io::BufRead;
+use std::io::{BufRead, Read};
 use std::process;
 
 pub struct Lexer<R: io::Read> {
     reader: io::BufReader<R>,
 }
+
+// TODO: Support utf-8 properly.
+//       Current code uses String.len() which returns the number of bytes and not utf-8 characters.
+//       Getting proper utf-8 substrings is also non-trivial in Rust it seems.
 
 impl<R: io::Read> Lexer<R> {
     pub fn new(r: R) -> Self {
@@ -30,33 +35,52 @@ impl<R: io::Read> Lexer<R> {
         }
     }
 
+    // peek reads n bytes from the current reader without advancing the reader's position.
     fn peek(&mut self, n: usize) -> Result<String, Box<dyn error::Error>> {
         // TODO: Do not call fill_buf every call to peek.
         //       The buffer returned from fill_buf should be fully consumed before calling fill_buf
         //       again because fill_buf will result in reads from the underlying reader.
         let buf = std::str::from_utf8(self.reader.fill_buf()?)?;
-        if buf.chars().count() < n {
+        if buf.len() < n {
             return Ok(buf.to_string());
         }
         Ok(buf[..n].to_string())
     }
 
-    fn read_until(&mut self, tok: String) -> Result<bool, Box<dyn error::Error>> {
+    // read_until reads from the reader until it encounters one of the given tokens. If one is
+    // fonud then it is returned. If the reader is fully read without encountering a token then
+    // None is returned.
+    fn read_until(
+        &mut self,
+        tokens: &Vec<String>,
+    ) -> Result<Option<String>, Box<dyn error::Error>> {
+        // Get maximum length of given tokens.
+        let length = tokens.iter().map(|tok| tok.len()).max().unwrap_or(0);
         loop {
-            let buf = self.peek(tok.chars().count())?;
+            let buf = self.peek(length)?;
             if buf.len() == 0 {
                 // EOF
-                return Ok(false);
+                return Ok(None);
             }
-            if buf == tok {
-                self.reader.consume(buf.len());
-                return Ok(true);
+
+            let mut found_tok: Option<String> = None;
+            for tok in tokens.iter() {
+                if buf.len() >= tok.len() && buf[..tok.len()].to_string() == *tok {
+                    found_tok = Some(tok.clone());
+                    break;
+                }
+            }
+
+            if found_tok.is_some() {
+                self.reader.consume(found_tok.as_ref().unwrap().len());
+                return Ok(found_tok);
             } else {
                 self.reader.consume(1);
             }
         }
     }
 
+    // read_tok reads an expected token from the reader. Returns whether the token was read or not.
     fn read_tok(&mut self, tok: String) -> Result<bool, Box<dyn error::Error>> {
         let buf = self.peek(tok.chars().count())?;
         if buf == tok {
@@ -66,6 +90,8 @@ impl<R: io::Read> Lexer<R> {
         Ok(false)
     }
 
+    // read_num reads an expected number (up to 3 digits) from the reader and returns it. If a
+    // number was not present at the current location an error is returned.
     fn read_num(&mut self) -> Result<i64, Box<dyn error::Error>> {
         let buf = self.peek(3)?;
         let mut digits = 0;
@@ -85,7 +111,66 @@ impl<R: io::Read> Lexer<R> {
 fn run(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
     let mut total = 0;
     let mut lex = Lexer::new(r);
-    while lex.read_until("mul".to_string())? {
+    loop {
+        let found_tok = lex.read_until(&vec!["mul".to_string()])?;
+        if found_tok.is_none() {
+            break;
+        }
+
+        if !lex.read_tok("(".to_string())? {
+            continue;
+        }
+
+        let left_result = lex.read_num();
+        // TODO: check for parse error
+        if let Err(_) = left_result {
+            continue;
+        }
+
+        if !lex.read_tok(",".to_string())? {
+            continue;
+        }
+
+        let right_result = lex.read_num();
+        // TODO: check for parse error
+        if let Err(_) = right_result {
+            continue;
+        }
+
+        if !lex.read_tok(")".to_string())? {
+            continue;
+        }
+        total += left_result.unwrap() * right_result.unwrap();
+    }
+
+    Ok(total)
+}
+
+fn run_do(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
+    let mut total = 0;
+    let mut lex = Lexer::new(r);
+    let mut enabled = true;
+    loop {
+        if !enabled {
+            let found_tok = lex.read_until(&vec!["do()".to_string()])?;
+            if found_tok.is_none() {
+                break;
+            }
+            enabled = true;
+            continue;
+        }
+
+        let found_tok = lex.read_until(&vec!["mul".to_string(), "don't()".to_string()])?;
+        if found_tok.is_none() {
+            break;
+        }
+
+        let tok = found_tok.unwrap();
+        if tok == "don't()".to_string() {
+            enabled = false;
+            continue;
+        }
+
         if !lex.read_tok("(".to_string())? {
             continue;
         }
@@ -117,7 +202,14 @@ fn run(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
 
 fn main() -> process::ExitCode {
     let stdin = io::stdin();
-    let result = match run(stdin.lock()) {
+    let mut buf: Vec<u8> = Vec::new();
+    if let Err(e) = stdin.lock().read_to_end(&mut buf) {
+        println!("error running: {e:?}");
+        return process::ExitCode::from(1);
+    }
+
+    let cur = io::Cursor::new(&buf);
+    let result = match run(cur) {
         Ok(d) => d,
         Err(e) => {
             println!("error running: {e:?}");
@@ -126,6 +218,17 @@ fn main() -> process::ExitCode {
     };
 
     println!("{}", result);
+
+    let cur_do = io::Cursor::new(&buf);
+    let result_do = match run_do(cur_do) {
+        Ok(d) => d,
+        Err(e) => {
+            println!("error running: {e:?}");
+            return process::ExitCode::from(1);
+        }
+    };
+
+    println!("{}", result_do);
 
     process::ExitCode::SUCCESS
 }
@@ -145,7 +248,20 @@ mod tests {
     }
 
     #[test]
-    fn test_mul_paren_mul() -> Result<(), Box<dyn error::Error>> {
+    fn test_run_do_nothing() -> Result<(), Box<dyn error::Error>> {
+        let inputs: [&str; 4] = ["mul(4*", "mul(6,9!", "?(12,34)", "mul ( 2 , 4 )"];
+
+        for input in inputs {
+            let b = Bytes::from(input);
+            let result = run(b.reader())?;
+            assert_eq!(result, 0);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_run_mul_paren_mul() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from("mul(mul(2,4)");
         let result = run(input.reader())?;
         assert_eq!(result, 8);
@@ -153,7 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mul_paren_num_mul() -> Result<(), Box<dyn error::Error>> {
+    fn test_run_mul_paren_num_mul() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from("mul(2mul(2,4)");
         let result = run(input.reader())?;
         assert_eq!(result, 8);
@@ -161,7 +277,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mul_paren_num_comma_mul() -> Result<(), Box<dyn error::Error>> {
+    fn test_run_mul_paren_num_comma_mul() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from("mul(2,mul(2,4)");
         let result = run(input.reader())?;
         assert_eq!(result, 8);
@@ -169,7 +285,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mul_paren_num_comma_num_mul() -> Result<(), Box<dyn error::Error>> {
+    fn test_run_mul_paren_num_comma_num_mul() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from("mul(2,12mul(2,4)");
         let result = run(input.reader())?;
         assert_eq!(result, 8);
@@ -177,12 +293,22 @@ mod tests {
     }
 
     #[test]
+    fn test_run_do() -> Result<(), Box<dyn error::Error>> {
+        let input = Bytes::from(
+            "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))",
+        );
+        let result = run_do(input.reader())?;
+        assert_eq!(result, 48);
+        Ok(())
+    }
+
+    #[test]
     fn test_lexer_read_until() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from("foobar");
         let mut lex = Lexer::new(input.reader());
-        let found = lex.read_until("bar".to_string()).unwrap();
+        let found = lex.read_until(&vec!["bar".to_string()]).unwrap();
 
-        assert_eq!(found, true);
+        assert_eq!(found, Some("bar".to_string()));
         Ok(())
     }
 
