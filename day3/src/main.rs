@@ -44,54 +44,43 @@
 
 // Program day3 reads the program on stdin and prints the sum of all mul() operations.
 
-use std::io::{self, BufRead, BufReader, ErrorKind, Read};
-use std::process::ExitCode;
+// use std::io::{self, BufRead, BufReader, ErrorKind, Read};
 use std::error;
+use std::io;
+use std::io::{BufRead, Read};
+use std::process;
 
-pub struct Lexer<R: Read> {
-    reader: BufReader<R>,
+pub struct Lexer<R: io::Read> {
+    reader: io::BufReader<R>,
     col: usize,
 }
 
-#derive[(Debug)]
-enum LexerError {
-    // An unexpected EOF encountered by the Lexer.
-    UnexpectedEof,
-
-    // Wrap std:io errors.
-    IOErr(ErrorKind),
-}
-
-impl<R: Read> Lexer<R> {
+impl<R: io::Read> Lexer<R> {
     pub fn new(r: R) -> Self {
         Lexer {
-            reader: BufReader::new(r),
+            reader: io::BufReader::new(r),
             col: 1,
         }
     }
 
-    fn peek(&mut self, n: usize) -> Result<String> {
-        let buf = std::str::from_utf8(self.reader.fill_buf().map_err(|err| err.to_string())?)
-            .map_err(|err| err.to_string())?
-            .to_string();
+    fn peek(&mut self, n: usize) -> Result<String, Box<dyn error::Error>> {
+        // TODO: Do not call fill_buf every call to peek.
+        //       The buffer returned from fill_buf should be fully consumed before calling fill_buf
+        //       again because fill_buf will result in reads from the underlying reader.
+        let buf = std::str::from_utf8(self.reader.fill_buf()?)?;
         if buf.chars().count() < n {
-            return Err(LexerError::UnexpectedEof);
+            return Ok(buf.to_string());
+            // return Ok(String::new());
         }
         Ok(buf[..n].to_string())
     }
 
-    fn peek_equal(&mut self, s: &String) -> Result<bool, String> {
-        let buf = std::str::from_utf8(self.reader.fill_buf().map_err(|err| err.to_string())?)
-            .map_err(|err| err.to_string())?
-            .to_string();
-        let s_len = s.chars().count();
-        if buf.chars().count() < s_len {
-            return Ok(false);
-        }
-        Ok(buf[..s_len].to_string() == *s)
+    fn peek_equal(&mut self, s: &String) -> Result<bool, Box<dyn error::Error>> {
+        let buf = self.peek(s.chars().count())?;
+        Ok(buf == *s)
     }
 
-    fn next_char(&mut self) -> Result<Option<char>, String> {
+    fn next_char(&mut self) -> Result<Option<char>, Box<dyn error::Error>> {
         let mut buf = [0; 1];
         match self.reader.read_exact(&mut buf) {
             Ok(_) => {
@@ -99,12 +88,12 @@ impl<R: Read> Lexer<R> {
                 self.col += 1;
                 Ok(Some(c))
             }
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => Ok(None), // Handle EOF
-            Err(e) => Err(e.to_string()),
+            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => Ok(None), // Handle EOF
+            Err(e) => Err(e.into()),
         }
     }
 
-    fn read_until(&mut self, tok: String) -> Result<bool, String> {
+    fn read_until(&mut self, tok: String) -> Result<bool, Box<dyn error::Error>> {
         while !self.peek_equal(&tok)? {
             let c = self.next_char()?;
             if c.is_none() {
@@ -116,7 +105,7 @@ impl<R: Read> Lexer<R> {
         Ok(true)
     }
 
-    fn read_tok(&mut self, tok: String) -> Result<bool, String> {
+    fn read_tok(&mut self, tok: String) -> Result<bool, Box<dyn error::Error>> {
         if self.peek_equal(&tok)? {
             self.reader.consume(tok.len());
             return Ok(true);
@@ -124,78 +113,55 @@ impl<R: Read> Lexer<R> {
         Ok(false)
     }
 
-    fn read_num(&mut self) -> Result<Option<i64>, String> {
-        let mut buf = String::new();
-        loop {
-            if let Some(c) = self.next_char()? {
-                if c.is_numeric() {
-                    buf.push(c);
-                } else {
-                    break;
-                }
+    fn read_num(&mut self) -> Result<i64, Box<dyn error::Error>> {
+        let buf = self.peek(3)?;
+        let mut digits = 0;
+        for c in buf.chars() {
+            if c.is_numeric() {
+                digits += 1;
+            } else {
+                break;
             }
         }
-        if buf.chars().count() == 0 {
-            return Ok(None);
-        }
-        let n = buf.parse::<i64>().map_err(|err| err.to_string())?;
-        Ok(Some(n))
+        self.reader.consume(digits);
+        Ok(buf[..digits].parse::<i64>()?)
     }
-
-    // fn pop_buf(&mut self, n: usize) {
-    //     let c = self.buffer.chars();
-    //     let c_cnt = c.count();
-    //     if n > c_cnt {
-    //         return;
-    //     }
-    //     let n_rm = c_cnt - n;
-    //     self.buffer = self.buffer[n_rm..].to_string()
-    // }
 }
 
-fn run(r: impl BufRead) -> Result<i64, String> {
+fn run(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
+    let mut total = 0;
     let mut lex = Lexer::new(r);
     while lex.read_until("mul".to_string())? {
         if !lex.read_tok("(".to_string())? {
             continue;
         }
-        if let Some(n) = lex.read_num()? {
-            println!("{}", n);
-        } else {
-            continue;
-        }
+        let left = lex.read_num()?;
         if !lex.read_tok(",".to_string())? {
-            println!("no comma");
             continue;
         }
-        if let Some(n) = lex.read_num()? {
-            println!("{}", n);
-        } else {
-            continue;
-        }
+        let right = lex.read_num()?;
         if !lex.read_tok(")".to_string())? {
-            println!("no )");
             continue;
         }
-        // TODO: multiply numbers.
+        total += left * right;
     }
 
-    Ok(0)
+    Ok(total)
 }
 
-fn main() -> ExitCode {
+fn main() -> process::ExitCode {
     let stdin = io::stdin();
     let result = match run(stdin.lock()) {
         Ok(d) => d,
         Err(e) => {
             println!("error running: {e:?}");
-            return ExitCode::from(1);
+            return process::ExitCode::from(1);
         }
     };
 
     println!("{}", result);
 
-    ExitCode::SUCCESS
+    process::ExitCode::SUCCESS
 }
 
 #[cfg(test)]
@@ -204,7 +170,7 @@ mod tests {
     use bytes::{Buf, Bytes};
 
     #[test]
-    fn test_run() -> Result<(), String> {
+    fn test_run() -> Result<(), Box<dyn error::Error>> {
         let input =
             Bytes::from("xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))");
         let result = run(input.reader())?;
@@ -213,12 +179,22 @@ mod tests {
     }
 
     #[test]
-    fn test_lexer_read_tok() -> Result<(), String> {
+    fn test_lexer_read_tok() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from(",");
         let mut lex = Lexer::new(input.reader());
         let found = lex.read_tok(",".to_string()).unwrap();
 
         assert_eq!(found, true);
+        Ok(())
+    }
+
+    #[test]
+    fn test_lexer_read_num() -> Result<(), Box<dyn error::Error>> {
+        let input = Bytes::from("123");
+        let mut lex = Lexer::new(input.reader());
+        let n = lex.read_num().unwrap();
+
+        assert_eq!(n, 123i64);
         Ok(())
     }
 }
