@@ -106,8 +106,9 @@ impl<R: io::Read> Lexer<R> {
                 break;
             }
         }
+        let n = buf[..digits].parse::<i64>()?;
         self.reader.consume(digits);
-        Ok(buf[..digits].parse::<i64>()?)
+        Ok(n)
     }
 }
 
@@ -118,15 +119,27 @@ fn run(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
         if !lex.read_tok("(".to_string())? {
             continue;
         }
-        let left = lex.read_num()?;
+
+        let left_result = lex.read_num();
+        // TODO: check for parse error
+        if let Err(_) = left_result {
+            continue;
+        }
+
         if !lex.read_tok(",".to_string())? {
             continue;
         }
-        let right = lex.read_num()?;
+
+        let right_result = lex.read_num();
+        // TODO: check for parse error
+        if let Err(_) = right_result {
+            continue;
+        }
+
         if !lex.read_tok(")".to_string())? {
             continue;
         }
-        total += left * right;
+        total += left_result.unwrap() * right_result.unwrap();
     }
 
     Ok(total)
@@ -158,6 +171,38 @@ mod tests {
             Bytes::from("xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))");
         let result = run(input.reader())?;
         assert_eq!(result, 161);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mul_paren_mul() -> Result<(), Box<dyn error::Error>> {
+        let input = Bytes::from("mul(mul(2,4)");
+        let result = run(input.reader())?;
+        assert_eq!(result, 8);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mul_paren_num_mul() -> Result<(), Box<dyn error::Error>> {
+        let input = Bytes::from("mul(2mul(2,4)");
+        let result = run(input.reader())?;
+        assert_eq!(result, 8);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mul_paren_num_comma_mul() -> Result<(), Box<dyn error::Error>> {
+        let input = Bytes::from("mul(2,mul(2,4)");
+        let result = run(input.reader())?;
+        assert_eq!(result, 8);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mul_paren_num_comma_num_mul() -> Result<(), Box<dyn error::Error>> {
+        let input = Bytes::from("mul(2,12mul(2,4)");
+        let result = run(input.reader())?;
+        assert_eq!(result, 8);
         Ok(())
     }
 
