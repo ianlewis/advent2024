@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Program day4 prints the number of times XMAS appears in the input grid.
+// Program day4 prints the number of times XMAS appears in the input grid and
+// the number of times an X-MAS shapes are found in the grid.
 
 use std::error;
 use std::io::{self, BufRead};
@@ -50,28 +51,6 @@ fn read_grid(mut r: impl BufRead) -> Result<Vec<Vec<char>>, Box<dyn error::Error
     Ok(grid)
 }
 
-// xmas returns if the current position spells XMAS in the given direction.
-fn xmas(grid: &Vec<Vec<char>>, x: usize, y: usize, dx: isize, dy: isize) -> bool {
-    let dx1 = x.checked_add_signed(dx);
-    let dy1 = y.checked_add_signed(dy);
-    let dx2 = x.checked_add_signed(dx * 2);
-    let dy2 = y.checked_add_signed(dy * 2);
-    let dx3 = x.checked_add_signed(dx * 3);
-    let dy3 = y.checked_add_signed(dy * 3);
-
-    if dx3.is_none() || dx3.unwrap() >= grid[y].len() {
-        return false;
-    }
-    if dy3.is_none() || dy3.unwrap() >= grid.len() {
-        return false;
-    }
-
-    grid[y][x] == 'X'
-        && grid[dy1.unwrap()][dx1.unwrap()] == 'M'
-        && grid[dy2.unwrap()][dx2.unwrap()] == 'A'
-        && grid[dy3.unwrap()][dx3.unwrap()] == 'S'
-}
-
 fn find_xmas(grid: &Vec<Vec<char>>) -> i64 {
     let directions: [(isize, isize); 8] = [
         (0, -1),  // up
@@ -88,7 +67,25 @@ fn find_xmas(grid: &Vec<Vec<char>>) -> i64 {
     for (y, col) in grid.iter().enumerate() {
         for (x, _) in col.iter().enumerate() {
             for (dx, dy) in directions {
-                if xmas(&grid, x, y, dx, dy) {
+                let dx1 = x.checked_add_signed(dx);
+                let dy1 = y.checked_add_signed(dy);
+                let dx2 = x.checked_add_signed(dx * 2);
+                let dy2 = y.checked_add_signed(dy * 2);
+                let dx3 = x.checked_add_signed(dx * 3);
+                let dy3 = y.checked_add_signed(dy * 3);
+
+                if dx3.is_none() || dx3.unwrap() >= grid[y].len() {
+                    continue;
+                }
+                if dy3.is_none() || dy3.unwrap() >= grid.len() {
+                    continue;
+                }
+
+                if grid[y][x] == 'X'
+                    && grid[dy1.unwrap()][dx1.unwrap()] == 'M'
+                    && grid[dy2.unwrap()][dx2.unwrap()] == 'A'
+                    && grid[dy3.unwrap()][dx3.unwrap()] == 'S'
+                {
                     total += 1;
                 }
             }
@@ -98,15 +95,72 @@ fn find_xmas(grid: &Vec<Vec<char>>) -> i64 {
     total
 }
 
-fn run(r: impl BufRead) -> Result<i64, Box<dyn error::Error>> {
+fn find_x_mas(grid: &Vec<Vec<char>>) -> i64 {
+    let mut seen: Vec<(usize, usize)> = Vec::new();
+
+    let directions: [(isize, isize); 4] = [
+        (-1, -1), // diagonal up left
+        (1, -1),  // diagonal up right
+        (-1, 1),  // diagonal down left
+        (1, 1),   // diagonal down right
+    ];
+
+    let mut total = 0;
+    for (y, col) in grid.iter().enumerate() {
+        'outer: for (x, _) in col.iter().enumerate() {
+            // We must track where the other M in the X-MAS is located to avoid
+            // double counting.
+            for (sx, sy) in seen.iter() {
+                if x == *sx && y == *sy {
+                    continue 'outer;
+                }
+            }
+
+            for (dx, dy) in directions {
+                let dx1 = x.checked_add_signed(dx);
+                let dy1 = y.checked_add_signed(dy);
+                let dx2 = x.checked_add_signed(dx * 2);
+                let dy2 = y.checked_add_signed(dy * 2);
+
+                if dx2.is_none() || dx2.unwrap() >= grid[y].len() {
+                    continue;
+                }
+                if dy2.is_none() || dy2.unwrap() >= grid.len() {
+                    continue;
+                }
+
+                let dx1_u = dx1.unwrap();
+                let dy1_u = dy1.unwrap();
+                let dx2_u = dx2.unwrap();
+                let dy2_u = dy2.unwrap();
+
+                // The center must be an 'A'
+                if grid[y][x] == 'M' && grid[dy1_u][dx1_u] == 'A' && grid[dy2_u][dx2_u] == 'S' {
+                    // Find the MAS in the other direction.
+                    if grid[y][dx2_u] == 'M' && grid[dy2_u][x] == 'S' {
+                        total += 1;
+                        seen.push((dx2_u, y));
+                    } else if grid[dy2_u][x] == 'M' && grid[y][dx2_u] == 'S' {
+                        seen.push((x, dy2_u));
+                        total += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    total
+}
+
+fn run(r: impl BufRead) -> Result<(i64, i64), Box<dyn error::Error>> {
     // Read the full grid.
     let grid = read_grid(r)?;
-    Ok(find_xmas(&grid))
+    Ok((find_xmas(&grid), find_x_mas(&grid)))
 }
 
 fn main() -> process::ExitCode {
     let stdin = io::stdin();
-    let n = match run(stdin.lock()) {
+    let (n, n2) = match run(stdin.lock()) {
         Ok(n) => n,
         Err(e) => {
             println!("error running: {e:?}");
@@ -115,6 +169,7 @@ fn main() -> process::ExitCode {
     };
 
     println!("{}", n);
+    println!("{}", n2);
 
     process::ExitCode::SUCCESS
 }
@@ -140,8 +195,9 @@ MXMXAXMASX
 ",
         );
 
-        let n = run(input.reader())?;
+        let (n, n2) = run(input.reader())?;
         assert_eq!(n, 18);
+        assert_eq!(n2, 9);
         Ok(())
     }
 }
