@@ -48,7 +48,7 @@ impl<R: io::Read> Lexer<R> {
     }
 
     // read_until reads from the reader until it encounters one of the given tokens. If one is
-    // fonud then it is returned. If the reader is fully read without encountering a token then
+    // found then it is returned. If the reader is fully read without encountering a token then
     // None is returned.
     fn read_until(
         &mut self,
