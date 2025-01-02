@@ -39,7 +39,7 @@ impl<R: io::Read> Lexer<R> {
     fn peek(&mut self, n: usize) -> Result<String, Box<dyn error::Error>> {
         // TODO: Do not call fill_buf every call to peek.
         //       The buffer returned from fill_buf should be fully consumed before calling fill_buf
-        //       again because fill_buf will result in reads from the underlying reader.
+        //       again because we convert it to a String on every call to peek.
         let buf = std::str::from_utf8(self.reader.fill_buf()?)?;
         if buf.len() < n {
             return Ok(buf.to_string());
