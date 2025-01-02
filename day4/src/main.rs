@@ -96,7 +96,9 @@ fn find_xmas(grid: &Vec<Vec<char>>) -> i64 {
 }
 
 fn find_x_mas(grid: &Vec<Vec<char>>) -> i64 {
-    let mut seen: Vec<(usize, usize)> = Vec::new();
+    // TODO: use a map?
+    // TODO: don't bother with tracking, just divide the total by 2?
+    let mut seen: Vec<(usize, usize, usize, usize)> = Vec::new();
 
     let directions: [(isize, isize); 4] = [
         (-1, -1), // diagonal up left
@@ -107,16 +109,11 @@ fn find_x_mas(grid: &Vec<Vec<char>>) -> i64 {
 
     let mut total = 0;
     for (y, col) in grid.iter().enumerate() {
-        'outer: for (x, _) in col.iter().enumerate() {
-            // We must track where the other M in the X-MAS is located to avoid
+        for (x, _) in col.iter().enumerate() {
+            // We must track where Ms in the X-MAS are located to avoid
             // double counting.
-            for (sx, sy) in seen.iter() {
-                if x == *sx && y == *sy {
-                    continue 'outer;
-                }
-            }
 
-            for (dx, dy) in directions {
+            'outer: for (dx, dy) in directions {
                 let dx1 = x.checked_add_signed(dx);
                 let dy1 = y.checked_add_signed(dy);
                 let dx2 = x.checked_add_signed(dx * 2);
@@ -138,10 +135,22 @@ fn find_x_mas(grid: &Vec<Vec<char>>) -> i64 {
                 if grid[y][x] == 'M' && grid[dy1_u][dx1_u] == 'A' && grid[dy2_u][dx2_u] == 'S' {
                     // Find the MAS in the other direction.
                     if grid[y][dx2_u] == 'M' && grid[dy2_u][x] == 'S' {
+                        for (sx, sy, sx2, sy2) in seen.iter() {
+                            if x == *sx && y == *sy && dx2_u == *sx2 && y == *sy2 {
+                                continue 'outer;
+                            }
+                        }
+
                         total += 1;
-                        seen.push((dx2_u, y));
+                        seen.push((dx2_u, y, x, y));
                     } else if grid[dy2_u][x] == 'M' && grid[y][dx2_u] == 'S' {
-                        seen.push((x, dy2_u));
+                        for (sx, sy, sx2, sy2) in seen.iter() {
+                            if x == *sx && y == *sy && x == *sx2 && dy2_u == *sy2 {
+                                continue 'outer;
+                            }
+                        }
+
+                        seen.push((x, dy2_u, x, y));
                         total += 1;
                     }
                 }
