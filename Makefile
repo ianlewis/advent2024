@@ -116,7 +116,7 @@ yaml-format: node_modules/.installed ## Format YAML files.
 #####################################################################
 
 .PHONY: lint
-lint: yamllint actionlint markdownlint ## Run all linters.
+lint: yamllint actionlint markdownlint clippy ## Run all linters.
 
 .PHONY: actionlint
 actionlint: ## Runs the actionlint linter.
@@ -172,6 +172,20 @@ yamllint: .venv/.installed ## Runs the yamllint linter.
 
 DAYS = day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 day18 day19 day20 day21 day22 day23 day24
 
+.PHONY: clippy
+clippy: ## Runs clippy linter.
+	@set -euo pipefail; \
+		exit_code=0; \
+		for i in day*; do\
+			if ! cargo clippy --manifest-path "$$i/Cargo.toml" -- -D warnings; then \
+				exit_code=1; \
+			fi; \
+		done; \
+		exit "$${exit_code}"; \
+
+## Solutions
+#####################################################################
+
 all: $(DAYS) ## Build all solutions
 
 define GEN_RULE
@@ -185,11 +199,11 @@ $(foreach var,$(DAYS),$(eval $(call GEN_RULE,$(var))))
 ## Tests
 #####################################################################
 
-unit-tests:
+unit-tests: ## Run unit tests.
 	@set -euo pipefail;\
 		for i in day*; do\
 			cargo test --manifest-path "$$i/Cargo.toml";\
-		done;
+		done
 
 ## Maintenance
 #####################################################################

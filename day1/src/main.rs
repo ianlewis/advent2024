@@ -70,9 +70,9 @@ fn run(r: impl BufRead) -> Result<(i64, i64), String> {
     // Accumulate the similarity score.
     let similarity = first
         .iter()
-        .fold(0, |acc, n| acc + (n * occurrences.get(&n).unwrap_or(&0)));
+        .fold(0, |acc, n| acc + (n * occurrences.get(n).unwrap_or(&0)));
 
-    return Ok((dist, similarity));
+    Ok((dist, similarity))
 }
 
 fn main() -> ExitCode {

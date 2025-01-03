@@ -22,7 +22,7 @@ use std::str;
 
 // is_safe returns the index at which an unsafe value was found or zero if the report is safe (zero
 // cannot be the index where a report is found to be unsafe).
-fn is_safe(list: &Vec<i64>, increasing: bool, skip: usize) -> usize {
+fn is_safe(list: &[i64], increasing: bool, skip: usize) -> usize {
     let mut prev = 0;
     for (i, n) in list.iter().enumerate() {
         if i == skip && skip != 0 {
@@ -31,7 +31,8 @@ fn is_safe(list: &Vec<i64>, increasing: bool, skip: usize) -> usize {
         // Check for a diff 0 < x < 3
         if i > 0 {
             let diff = (*n - prev).abs();
-            if diff < 1 || diff > 3 {
+            // NOTE: for some reason this is prefferable to 'diff < 1 || diff > 3'
+            if !(1..=3).contains(&diff) {
                 return i;
             }
         }
@@ -45,7 +46,7 @@ fn is_safe(list: &Vec<i64>, increasing: bool, skip: usize) -> usize {
         prev = *n;
     }
 
-    return 0;
+    0
 }
 
 fn run(r: impl BufRead) -> Result<(i64, i64), String> {
@@ -81,26 +82,23 @@ fn run(r: impl BufRead) -> Result<(i64, i64), String> {
 
         if index < 3 {
             // Check if either the first or second value can be removed.
-            if list.len() >= 3 {
-                if is_safe(&list[1..].to_vec(), list[1] < list[2], 0) == 0 {
-                    semi_safe_num += 1;
-                    continue;
-                } else if is_safe(&list, list[0] < list[2], 1) == 0 {
-                    semi_safe_num += 1;
-                    continue;
-                }
+            if list.len() >= 3 && is_safe(&list[1..], list[1] < list[2], 0) == 0
+                || is_safe(&list, list[0] < list[2], 1) == 0
+            {
+                semi_safe_num += 1;
+                continue;
             }
         }
         if index > 1 {
             // Try skipping the level at index.
-            let index2 = is_safe(&list[index - 1..].to_vec(), increasing, 1);
+            let index2 = is_safe(&list[index - 1..], increasing, 1);
             if index2 == 0 {
                 semi_safe_num += 1;
             }
         }
     }
 
-    return Ok((safe_num, semi_safe_num));
+    Ok((safe_num, semi_safe_num))
 }
 
 fn main() -> ExitCode {
