@@ -75,29 +75,35 @@ fn is_valid(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> bool {
     return true;
 }
 
-fn correct_update(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> Vec<i64> {
+fn correct_update(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> Result<Vec<i64>, String> {
     let mut corrected: Vec<i64> = Vec::new();
 
     // Build up a new list of pages where the numbers are inserted at the correct position.
     for n in update.iter() {
+        let mut after: Vec<i64> = Vec::new();
         let mut before: Vec<i64> = Vec::new();
         for (x, y) in rules.iter() {
             if n == x {
                 before.push(*y);
             }
+            if n == y {
+                after.push(*x);
+            }
         }
 
-        // NOTE: if rules are inconsistent then this will fail.
-        //       To check for consistency you would need to check that we are inserting at a
-        //       location that doesn't violate rules saying that n must be after a number
-        //       later in the corrected vector.
         let mut inserted = false;
-        for (i, c) in corrected.iter().enumerate() {
-            if before.contains(c) {
-                // Insert here.
-                corrected.insert(i, *n);
-                inserted = true;
-                break;
+        for (i, c) in corrected.clone().iter().enumerate() {
+            if !inserted {
+                if before.contains(c) {
+                    corrected.insert(i, *n);
+                    inserted = true;
+                }
+            }
+            // NOTE: We add a consistency check for good measure.
+            if inserted {
+                if after.contains(c) {
+                    return Err("inconsistent rules".to_string());
+                }
             }
         }
         if !inserted {
@@ -105,7 +111,7 @@ fn correct_update(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> Vec<i64> {
         }
     }
 
-    corrected
+    Ok(corrected)
 }
 
 fn run(r: impl BufRead) -> Result<(i64, i64), Box<dyn error::Error>> {
@@ -117,10 +123,12 @@ fn run(r: impl BufRead) -> Result<(i64, i64), Box<dyn error::Error>> {
         .fold(0, |acc, u| acc + u[u.len() / 2]);
 
     // Filter the invalid updates, correct them, and sum the middle page numbers.
-    let invalid_update_sum = updates
-        .iter()
-        .filter(|u| !is_valid(&rules, *u)).map(|u| correct_update(&rules, u))
-        .fold(0, |acc, u| acc + u[u.len() / 2]);
+    let invalid_updates = updates.iter().filter(|u| !is_valid(&rules, *u));
+    let mut invalid_update_sum = 0;
+    for u in invalid_updates {
+        let corrected = correct_update(&rules, u)?;
+        invalid_update_sum += corrected[corrected.len() / 2];
+    }
 
     Ok((valid_update_sum, invalid_update_sum))
 }
@@ -184,5 +192,27 @@ mod tests {
         assert_eq!(n, 143);
         assert_eq!(n2, 123);
         Ok(())
+    }
+
+    #[test]
+    fn test_inconsistent_rules() -> Result<(), Box<dyn error::Error>> {
+        let input = Bytes::from(
+            "1|2
+             2|3
+             3|1
+
+1,2,3
+",
+        );
+
+        match run(input.reader()) {
+            Ok((n, n2)) => {
+                println!("{} {}", n, n2);
+                return Err("Expected error".to_string().into());
+            }
+            Err(_) => {
+                return Ok(());
+            }
+        }
     }
 }
