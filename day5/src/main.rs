@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Program day5 prints the sum of the middle page number from correctly-ordered updates.
+// Program day5 prints the sum of the middle page number from correctly-ordered updates and the sum
+// of middle page numbers of incorrectly-ordered updates after they have been corrected.
 
 use std::error;
 use std::io::{self, BufRead};
@@ -74,18 +75,59 @@ fn is_valid(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> bool {
     return true;
 }
 
-fn run(r: impl BufRead) -> Result<i64, Box<dyn error::Error>> {
+fn correct_update(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> Vec<i64> {
+    let mut corrected: Vec<i64> = Vec::new();
+
+    // Build up a new list of pages where the numbers are inserted at the correct position.
+    for n in update.iter() {
+        let mut before: Vec<i64> = Vec::new();
+        for (x, y) in rules.iter() {
+            if n == x {
+                before.push(*y);
+            }
+        }
+
+        // NOTE: if rules are inconsistent then this will fail.
+        //       To check for consistency you would need to check that we are inserting at a
+        //       location that doesn't violate rules saying that n must be before a number
+        //       later in the corrected vector.
+        let mut inserted = false;
+        for (i, c) in corrected.iter().enumerate() {
+            if before.contains(c) {
+                // Insert here.
+                corrected.insert(i, *n);
+                inserted = true;
+                break;
+            }
+        }
+        if !inserted {
+            corrected.push(*n);
+        }
+    }
+
+    corrected
+}
+
+fn run(r: impl BufRead) -> Result<(i64, i64), Box<dyn error::Error>> {
     let (rules, updates) = read_rules_and_updates(r)?;
     // Filter the valid updates and sum the middle page numbers.
-    Ok(updates
+    let valid_update_sum = updates
         .iter()
         .filter(|u| is_valid(&rules, *u))
-        .fold(0, |acc, u| acc + u[u.len() / 2]))
+        .fold(0, |acc, u| acc + u[u.len() / 2]);
+
+    // Filter the invalid updates, correct them, and sum the middle page numbers.
+    let invalid_update_sum = updates
+        .iter()
+        .filter(|u| !is_valid(&rules, *u)).map(|u| correct_update(&rules, u))
+        .fold(0, |acc, u| acc + u[u.len() / 2]);
+
+    Ok((valid_update_sum, invalid_update_sum))
 }
 
 fn main() -> process::ExitCode {
     let stdin = io::stdin();
-    let n = match run(stdin.lock()) {
+    let (n, n2) = match run(stdin.lock()) {
         Ok(n) => n,
         Err(e) => {
             println!("error running: {e:?}");
@@ -94,6 +136,7 @@ fn main() -> process::ExitCode {
     };
 
     println!("{}", n);
+    println!("{}", n2);
 
     process::ExitCode::SUCCESS
 }
@@ -137,8 +180,9 @@ mod tests {
 ",
         );
 
-        let n = run(input.reader())?;
+        let (n, n2) = run(input.reader())?;
         assert_eq!(n, 143);
+        assert_eq!(n2, 123);
         Ok(())
     }
 }
