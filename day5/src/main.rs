@@ -89,7 +89,7 @@ fn correct_update(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> Vec<i64> {
 
         // NOTE: if rules are inconsistent then this will fail.
         //       To check for consistency you would need to check that we are inserting at a
-        //       location that doesn't violate rules saying that n must be before a number
+        //       location that doesn't violate rules saying that n must be after a number
         //       later in the corrected vector.
         let mut inserted = false;
         for (i, c) in corrected.iter().enumerate() {
