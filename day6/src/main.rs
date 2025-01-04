@@ -110,7 +110,7 @@ impl Map {
             }
 
             self.map[new_guard_y][new_guard_x] = self.map[self.guard_y][self.guard_x];
-            self.map[self.guard_y][self.guard_x] = 'X'; // Mark the postions we have been to.
+            self.map[self.guard_y][self.guard_x] = '.'; // Mark the postions we have been to.
 
             self.guard_x = new_guard_x;
             self.guard_y = new_guard_y;
@@ -139,10 +139,10 @@ fn read_map(r: impl BufRead) -> Result<Vec<Vec<char>>, Box<dyn error::Error>> {
     Ok(map_vec)
 }
 
-fn run(r: impl BufRead) -> Result<(usize, i64), Box<dyn error::Error>> {
+fn run(r: impl BufRead) -> Result<(usize, usize), Box<dyn error::Error>> {
     let mut map = Map::new(read_map(r)?);
 
-    let mut obstruction_locations = 0;
+    let mut obstruction_positions = collections::HashSet::new();
 
     // Advance the guard until they leave the map.
     loop {
@@ -154,26 +154,30 @@ fn run(r: impl BufRead) -> Result<(usize, i64), Box<dyn error::Error>> {
 
         // Insert an obstruction in front of the guard and see if it goes into a loop.
         let mut new_map = Map::new(map.map.clone());
-        match new_map.next() {
+        let (o_x, o_y) = match new_map.next() {
             Some((x, y)) => {
                 new_map.map[y][x] = '#';
+                (x, y)
             }
             None => continue,
-        }
+        };
 
+        if obstruction_positions.contains(&(o_x, o_y)) {
+            continue;
+        };
         loop {
             match new_map.advance() {
                 Ok(Some(_p)) => {}
                 Ok(None) => break,
                 Err(_e) => {
-                    obstruction_locations += 1;
+                    obstruction_positions.insert((o_x, o_y));
                     break;
                 }
             }
         }
     }
 
-    Ok((map.visited_pos.len(), obstruction_locations))
+    Ok((map.visited_pos.len(), obstruction_positions.len()))
 }
 
 fn main() -> process::ExitCode {
