@@ -15,7 +15,6 @@
 // Program day1 reads the input on stdin and prints the total distance from part one on the first
 // line of stdout and the similarity score from part two on the second line.
 
-use std::collections::HashMap;
 use std::io;
 use std::io::BufRead;
 use std::process::ExitCode;
@@ -55,22 +54,10 @@ fn run(r: impl BufRead) -> Result<(i64, i64), String> {
         .zip(second.iter())
         .fold(0, |acc, (l, r)| acc + (l - r).abs());
 
-    // Find occurrences of numbers from the left list in the right list.
-    let mut occurrences: HashMap<i64, i64> = HashMap::new();
-    for n in second {
-        occurrences.insert(
-            n,
-            match occurrences.get(&n) {
-                Some(v) => v + 1,
-                None => 1,
-            },
-        );
-    }
-
     // Accumulate the similarity score.
-    let similarity = first
-        .iter()
-        .fold(0, |acc, n| acc + (n * occurrences.get(n).unwrap_or(&0)));
+    let similarity = first.iter().fold(0, |acc, n| {
+        acc + (n * second.iter().filter(|n2| n == *n2).count() as i64)
+    });
 
     Ok((dist, similarity))
 }
