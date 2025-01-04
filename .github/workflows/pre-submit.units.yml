@@ -136,3 +136,14 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - run: make yamllint
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup component add --toolchain stable rustfmt rust-src clippy
+          rustup default stable
+      - run: make clippy
