@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Program day6 prints the number of positions visited by the guard in their route.
+// Program day6 prints the number of positions visited by the guard in their route and the number
+// of places an obstruction could be added to cause the gaurd to go into a loop.
 
+use std::collections;
 use std::error;
 use std::io::{self, BufRead};
 use std::process;
@@ -23,27 +25,35 @@ struct Map {
     guard_x: usize,
     guard_y: usize,
 
-    positions_num: i64,
+    // visited_pos is a HashMap that maps visited positions to the guard's directional character
+    // <,^,>, or v.
+    visited_pos: collections::HashMap<(usize, usize), Vec<char>>,
 }
 
 impl Map {
     pub fn new(map: Vec<Vec<char>>) -> Self {
         let mut guard_x = 0;
         let mut guard_y = 0;
+        let mut guard_set = Vec::new();
         for (y, col) in map.iter().enumerate() {
             for (x, c) in col.iter().enumerate() {
                 if *c == '^' || *c == '>' || *c == 'v' || *c == '<' {
                     guard_x = x;
                     guard_y = y;
+                    guard_set.push(*c);
                 }
             }
         }
+
+        let mut visited_pos = collections::HashMap::new();
+        visited_pos.insert((guard_x, guard_y), guard_set);
 
         Map {
             map,
             guard_x,
             guard_y,
-            positions_num: 1,
+
+            visited_pos,
         }
     }
 
@@ -68,6 +78,17 @@ impl Map {
             return None;
         }
 
+        Some((new_guard_x, new_guard_y))
+    }
+
+    pub fn advance(&mut self) -> Result<Option<(usize, usize)>, String> {
+        let next_pos = self.next();
+        if next_pos.is_none() {
+            return Ok(None);
+        }
+
+        let (new_guard_x, new_guard_y) = next_pos.unwrap();
+
         // Check for obstructions
         if self.map[new_guard_y][new_guard_x] == '#' {
             // - If there is something directly in front of you, turn right 90 degrees.
@@ -81,9 +102,11 @@ impl Map {
         } else {
             // - Otherwise, take a step forward.
 
-            // Check if we have been to this position.
-            if self.map[new_guard_y][new_guard_x] != 'X' {
-                self.positions_num += 1;
+            // First check if we have entered a loop.
+            if let Some(p) = self.visited_pos.get(&(new_guard_x, new_guard_y)) {
+                if p.contains(&self.map[self.guard_y][self.guard_x]) {
+                    return Err("loop".to_string());
+                };
             }
 
             self.map[new_guard_y][new_guard_x] = self.map[self.guard_y][self.guard_x];
@@ -91,13 +114,19 @@ impl Map {
 
             self.guard_x = new_guard_x;
             self.guard_y = new_guard_y;
+
+            // Insert our visited position.
+            self.visited_pos
+                .entry((self.guard_x, self.guard_y))
+                .and_modify(|p| p.push(self.map[self.guard_y][self.guard_x]))
+                .or_insert(vec![self.map[self.guard_y][self.guard_x]]);
         }
 
-        Some((self.guard_y, self.guard_x))
+        Ok(Some((self.guard_y, self.guard_x)))
     }
 }
 
-fn read_map(r: impl BufRead) -> Result<Map, Box<dyn error::Error>> {
+fn read_map(r: impl BufRead) -> Result<Vec<Vec<char>>, Box<dyn error::Error>> {
     let mut map_vec: Vec<Vec<char>> = Vec::new();
     for line in r.lines() {
         let mut col: Vec<char> = Vec::new();
@@ -107,22 +136,50 @@ fn read_map(r: impl BufRead) -> Result<Map, Box<dyn error::Error>> {
         map_vec.push(col);
     }
 
-    Ok(Map::new(map_vec))
+    Ok(map_vec)
 }
 
-fn run(r: impl BufRead) -> Result<i64, Box<dyn error::Error>> {
-    let mut map = read_map(r)?;
+fn run(r: impl BufRead) -> Result<(usize, i64), Box<dyn error::Error>> {
+    let mut map = Map::new(read_map(r)?);
+
+    let mut obstruction_locations = 0;
 
     // Advance the guard until they leave the map.
-    while let Some((_x, _y)) = map.next() {}
+    loop {
+        match map.advance() {
+            Ok(Some(_p)) => {}
+            Ok(None) => break,
+            Err(_e) => panic!("we should not have found a loop"),
+        }
 
-    Ok(map.positions_num)
+        // Insert an obstruction in front of the guard and see if it goes into a loop.
+        let mut new_map = Map::new(map.map.clone());
+        match new_map.next() {
+            Some((x, y)) => {
+                new_map.map[y][x] = '#';
+            }
+            None => continue,
+        }
+
+        loop {
+            match new_map.advance() {
+                Ok(Some(_p)) => {}
+                Ok(None) => break,
+                Err(_e) => {
+                    obstruction_locations += 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok((map.visited_pos.len(), obstruction_locations))
 }
 
 fn main() -> process::ExitCode {
     let stdin = io::stdin();
-    let n = match run(stdin.lock()) {
-        Ok(n) => n,
+    let (n, n2) = match run(stdin.lock()) {
+        Ok((n, n2)) => (n, n2),
         Err(e) => {
             println!("error running: {e:?}");
             return process::ExitCode::from(1);
@@ -130,6 +187,7 @@ fn main() -> process::ExitCode {
     };
 
     println!("{}", n);
+    println!("{}", n2);
 
     process::ExitCode::SUCCESS
 }
@@ -155,8 +213,9 @@ mod tests {
 ",
         );
 
-        let n = run(input.reader())?;
+        let (n, n2) = run(input.reader())?;
         assert_eq!(n, 41);
+        assert_eq!(n2, 6);
         Ok(())
     }
 }
