@@ -50,29 +50,26 @@ impl<R: io::Read> Lexer<R> {
     // read_until reads from the reader until it encounters one of the given tokens. If one is
     // found then it is returned. If the reader is fully read without encountering a token then
     // None is returned.
-    fn read_until(
-        &mut self,
-        tokens: &Vec<String>,
-    ) -> Result<Option<String>, Box<dyn error::Error>> {
+    fn read_until(&mut self, tokens: &[String]) -> Result<Option<String>, Box<dyn error::Error>> {
         // Get maximum length of given tokens.
         let length = tokens.iter().map(|tok| tok.len()).max().unwrap_or(0);
         loop {
             let buf = self.peek(length)?;
-            if buf.len() == 0 {
+            if buf.is_empty() {
                 // EOF
                 return Ok(None);
             }
 
             let mut found_tok: Option<String> = None;
             for tok in tokens.iter() {
-                if buf.len() >= tok.len() && buf[..tok.len()].to_string() == *tok {
+                if buf.len() >= tok.len() && buf[..tok.len()] == *tok {
                     found_tok = Some(tok.clone());
                     break;
                 }
             }
 
-            if found_tok.is_some() {
-                self.reader.consume(found_tok.as_ref().unwrap().len());
+            if let Some(tok) = &found_tok {
+                self.reader.consume(tok.len());
                 return Ok(found_tok);
             } else {
                 self.reader.consume(1);
@@ -112,7 +109,7 @@ fn run(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
     let mut total = 0;
     let mut lex = Lexer::new(r);
     loop {
-        let found_tok = lex.read_until(&vec!["mul".to_string()])?;
+        let found_tok = lex.read_until(&["mul".to_string()])?;
         if found_tok.is_none() {
             break;
         }
@@ -123,7 +120,7 @@ fn run(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
 
         let left_result = lex.read_num();
         // TODO: check for parse error
-        if let Err(_) = left_result {
+        if left_result.is_err() {
             continue;
         }
 
@@ -133,7 +130,7 @@ fn run(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
 
         let right_result = lex.read_num();
         // TODO: check for parse error
-        if let Err(_) = right_result {
+        if right_result.is_err() {
             continue;
         }
 
@@ -152,7 +149,7 @@ fn run_do(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
     let mut enabled = true;
     loop {
         if !enabled {
-            let found_tok = lex.read_until(&vec!["do()".to_string()])?;
+            let found_tok = lex.read_until(&["do()".to_string()])?;
             if found_tok.is_none() {
                 break;
             }
@@ -160,13 +157,13 @@ fn run_do(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
             continue;
         }
 
-        let found_tok = lex.read_until(&vec!["mul".to_string(), "don't()".to_string()])?;
+        let found_tok = lex.read_until(&["mul".to_string(), "don't()".to_string()])?;
         if found_tok.is_none() {
             break;
         }
 
         let tok = found_tok.unwrap();
-        if tok == "don't()".to_string() {
+        if tok == "don't()" {
             enabled = false;
             continue;
         }
@@ -177,7 +174,7 @@ fn run_do(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
 
         let left_result = lex.read_num();
         // TODO: check for parse error
-        if let Err(_) = left_result {
+        if left_result.is_err() {
             continue;
         }
 
@@ -187,7 +184,7 @@ fn run_do(r: impl io::BufRead) -> Result<i64, Box<dyn error::Error>> {
 
         let right_result = lex.read_num();
         // TODO: check for parse error
-        if let Err(_) = right_result {
+        if right_result.is_err() {
             continue;
         }
 
@@ -306,7 +303,7 @@ mod tests {
     fn test_lexer_read_until() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from("foobar");
         let mut lex = Lexer::new(input.reader());
-        let found = lex.read_until(&vec!["bar".to_string()]).unwrap();
+        let found = lex.read_until(&["bar".to_string()]).unwrap();
 
         assert_eq!(found, Some("bar".to_string()));
         Ok(())
@@ -318,7 +315,7 @@ mod tests {
         let mut lex = Lexer::new(input.reader());
         let found = lex.read_tok(",".to_string()).unwrap();
 
-        assert_eq!(found, true);
+        assert!(found);
         Ok(())
     }
 
