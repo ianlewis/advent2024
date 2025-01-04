@@ -13,46 +13,52 @@
 // limitations under the License.
 
 // Program day2 reads the input on stdin and prints the total number of safe reports and the number
-// of semi-safe (reports where omitting one level results in a safe report)..
+// of safe dampened reports.
 
 use std::io;
 use std::io::BufRead;
 use std::process::ExitCode;
 use std::str;
 
-// is_safe returns the index at which an unsafe value was found or zero if the report is safe (zero
-// cannot be the index where a report is found to be unsafe).
-fn is_safe(list: &[i64], increasing: bool, skip: usize) -> usize {
-    let mut prev = 0;
-    for (i, n) in list.iter().enumerate() {
-        if i == skip && skip != 0 {
-            continue;
+fn is_safe_increasing(list: &[i64]) -> bool {
+    for (a, b) in list.iter().zip(list[1..].iter()) {
+        if a - b < 1 || a - b > 3 {
+            return false;
         }
-        // Check for a diff 0 < x < 3
-        if i > 0 {
-            let diff = (*n - prev).abs();
-            // NOTE: for some reason this is prefferable to 'diff < 1 || diff > 3'
-            if !(1..=3).contains(&diff) {
-                return i;
-            }
-        }
-        if i > 1 {
-            // Check increasing/descreasing
-            if (increasing && *n < prev) || (!increasing && *n > prev) {
-                return i;
-            }
+    }
+    true
+}
+
+fn evaluate_report(report: &[i64]) -> bool {
+    // Check that the report is safe in forward or reverse order.
+    let report_rev: Vec<i64> = report.iter().copied().rev().collect();
+    is_safe_increasing(report) || is_safe_increasing(&report_rev)
+}
+
+fn evaluate_report_dampened(report: &[i64]) -> bool {
+    for (i, _v) in report.iter().enumerate() {
+        // Remove a number and see if it is still safe.
+        let mut report_dampened = vec![0; report.len()];
+        report_dampened.clone_from_slice(report);
+        report_dampened.remove(i);
+        if is_safe_increasing(&report_dampened) {
+            return true;
         }
 
-        prev = *n;
+        // Do the same thing in revese order.
+        let report_dampened_rev: Vec<i64> = report_dampened.iter().copied().rev().collect();
+        if is_safe_increasing(&report_dampened_rev) {
+            return true;
+        }
     }
 
-    0
+    false
 }
 
 fn run(r: impl BufRead) -> Result<(i64, i64), String> {
     // Read in both lists.
     let mut safe_num = 0;
-    let mut semi_safe_num = 0;
+    let mut safe_num_dampened = 0;
     for line in r.lines() {
         if let Err(e) = line {
             return Err(e.to_string());
@@ -67,38 +73,16 @@ fn run(r: impl BufRead) -> Result<(i64, i64), String> {
             list.push(n);
         }
 
-        if list.len() < 2 {
+        if evaluate_report(&list) {
             safe_num += 1;
-            continue;
         }
 
-        let increasing = list[0] < list[1];
-        let index = is_safe(&list, increasing, 0);
-        if index == 0 {
-            safe_num += 1;
-            semi_safe_num += 1;
-            continue;
-        }
-
-        if index < 3 {
-            // Check if either the first or second value can be removed.
-            if list.len() >= 3 && is_safe(&list[1..], list[1] < list[2], 0) == 0
-                || is_safe(&list, list[0] < list[2], 1) == 0
-            {
-                semi_safe_num += 1;
-                continue;
-            }
-        }
-        if index > 1 {
-            // Try skipping the level at index.
-            let index2 = is_safe(&list[index - 1..], increasing, 1);
-            if index2 == 0 {
-                semi_safe_num += 1;
-            }
+        if evaluate_report_dampened(&list) {
+            safe_num_dampened += 1;
         }
     }
 
-    Ok((safe_num, semi_safe_num))
+    Ok((safe_num, safe_num_dampened))
 }
 
 fn main() -> ExitCode {
