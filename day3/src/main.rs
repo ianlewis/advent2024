@@ -79,7 +79,7 @@ impl<R: io::Read> Lexer<R> {
 
     // read_tok reads an expected token from the reader. Returns whether the token was read or not.
     fn read_tok(&mut self, tok: String) -> Result<bool, Box<dyn error::Error>> {
-        let buf = self.peek(tok.chars().count())?;
+        let buf = self.peek(tok.len())?;
         if buf == tok {
             self.reader.consume(buf.len());
             return Ok(true);
