@@ -57,7 +57,16 @@ impl Map {
         }
     }
 
-    pub fn next(&mut self) -> Option<(usize, usize)> {
+    pub fn clone(&mut self) -> Self {
+        Map {
+            map: self.map.clone(),
+            guard_x: self.guard_x,
+            guard_y: self.guard_y,
+            visited_pos: self.visited_pos.clone(),
+        }
+    }
+
+    pub fn next_pos(&mut self) -> Option<(usize, usize)> {
         let (guard_dx, guard_dy) = match self.map[self.guard_y][self.guard_x] {
             '^' => (0, -1),
             '<' => (-1, 0),
@@ -82,7 +91,7 @@ impl Map {
     }
 
     pub fn advance(&mut self) -> Result<Option<(usize, usize)>, String> {
-        let next_pos = self.next();
+        let next_pos = self.next_pos();
         if next_pos.is_none() {
             return Ok(None);
         }
@@ -153,25 +162,28 @@ fn run(r: impl BufRead) -> Result<(usize, usize), Box<dyn error::Error>> {
         }
 
         // Insert an obstruction in front of the guard and see if it goes into a loop.
-        let mut new_map = Map::new(map.map.clone());
-        let (o_x, o_y) = match new_map.next() {
+        let mut new_map = map.clone();
+        let (o_x, o_y) = match new_map.next_pos() {
             Some((x, y)) => {
+                // Don't count if there is already an obstruction there, or if we have visited this location already.
+                if new_map.map[y][x] == '#' || new_map.visited_pos.contains_key(&(x, y)) {
+                    continue;
+                }
                 new_map.map[y][x] = '#';
                 (x, y)
             }
             None => continue,
         };
 
-        if obstruction_positions.contains(&(o_x, o_y)) {
-            continue;
-        };
-        loop {
-            match new_map.advance() {
-                Ok(Some(_p)) => {}
-                Ok(None) => break,
-                Err(_e) => {
-                    obstruction_positions.insert((o_x, o_y));
-                    break;
+        if !obstruction_positions.contains(&(o_x, o_y)) {
+            loop {
+                match new_map.advance() {
+                    Ok(Some(_p)) => {}
+                    Ok(None) => break,
+                    Err(_e) => {
+                        obstruction_positions.insert((o_x, o_y));
+                        break;
+                    }
                 }
             }
         }
