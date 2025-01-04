@@ -19,9 +19,10 @@ use std::error;
 use std::io::{self, BufRead};
 use std::process;
 
-fn read_rules_and_updates(
-    r: impl BufRead,
-) -> Result<(Vec<(i64, i64)>, Vec<Vec<i64>>), Box<dyn error::Error>> {
+type Rules = Vec<(i64, i64)>;
+type Updates = Vec<Vec<i64>>;
+
+fn read_rules_and_updates(r: impl BufRead) -> Result<(Rules, Updates), Box<dyn error::Error>> {
     let mut rules: Vec<(i64, i64)> = Vec::new();
     let mut updates: Vec<Vec<i64>> = Vec::new();
 
@@ -29,7 +30,7 @@ fn read_rules_and_updates(
     for line_r in r.lines() {
         let line = line_r?;
         let trimmed_line = line.trim();
-        if trimmed_line == "" {
+        if trimmed_line.is_empty() {
             reading_rules = false;
             continue;
         }
@@ -56,7 +57,7 @@ fn read_rules_and_updates(
     Ok((rules, updates))
 }
 
-fn is_valid(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> bool {
+fn is_valid(rules: &[(i64, i64)], update: &[i64]) -> bool {
     // Keep a list of pages that cannot come after pages we have seen.
     let mut invalid_pages: Vec<i64> = Vec::new();
     for page in update.iter() {
@@ -72,10 +73,10 @@ fn is_valid(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> bool {
         }
     }
 
-    return true;
+    true
 }
 
-fn correct_update(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> Result<Vec<i64>, String> {
+fn correct_update(rules: &[(i64, i64)], update: &[i64]) -> Result<Vec<i64>, String> {
     let mut corrected: Vec<i64> = Vec::new();
 
     // Build up a new list of pages where the numbers are inserted at the correct position.
@@ -93,17 +94,14 @@ fn correct_update(rules: &Vec<(i64, i64)>, update: &Vec<i64>) -> Result<Vec<i64>
 
         let mut inserted = false;
         for (i, c) in corrected.clone().iter().enumerate() {
-            if !inserted {
-                if before.contains(c) {
-                    corrected.insert(i, *n);
-                    inserted = true;
-                }
+            if !inserted && before.contains(c) {
+                corrected.insert(i, *n);
+                inserted = true;
             }
+
             // NOTE: We add a consistency check for good measure.
-            if inserted {
-                if after.contains(c) {
-                    return Err("inconsistent rules".to_string());
-                }
+            if inserted && after.contains(c) {
+                return Err("inconsistent rules".to_string());
             }
         }
         if !inserted {
@@ -119,11 +117,11 @@ fn run(r: impl BufRead) -> Result<(i64, i64), Box<dyn error::Error>> {
     // Filter the valid updates and sum the middle page numbers.
     let valid_update_sum = updates
         .iter()
-        .filter(|u| is_valid(&rules, *u))
+        .filter(|u| is_valid(&rules, u))
         .fold(0, |acc, u| acc + u[u.len() / 2]);
 
     // Filter the invalid updates, correct them, and sum the middle page numbers.
-    let invalid_updates = updates.iter().filter(|u| !is_valid(&rules, *u));
+    let invalid_updates = updates.iter().filter(|u| !is_valid(&rules, u));
     let mut invalid_update_sum = 0;
     for u in invalid_updates {
         let corrected = correct_update(&rules, u)?;
@@ -208,11 +206,9 @@ mod tests {
         match run(input.reader()) {
             Ok((n, n2)) => {
                 println!("{} {}", n, n2);
-                return Err("Expected error".to_string().into());
+                Err("Expected error".to_string().into())
             }
-            Err(_) => {
-                return Ok(());
-            }
+            Err(_) => Ok(()),
         }
     }
 }

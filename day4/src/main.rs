@@ -51,7 +51,7 @@ fn read_grid(mut r: impl BufRead) -> Result<Vec<Vec<char>>, Box<dyn error::Error
     Ok(grid)
 }
 
-fn find_xmas(grid: &Vec<Vec<char>>) -> i64 {
+fn find_xmas(grid: &[Vec<char>]) -> i64 {
     let directions: [(isize, isize); 8] = [
         (0, -1),  // up
         (0, 1),   // down
@@ -95,7 +95,7 @@ fn find_xmas(grid: &Vec<Vec<char>>) -> i64 {
     total
 }
 
-fn find_x_mas(grid: &Vec<Vec<char>>) -> i64 {
+fn find_x_mas(grid: &[Vec<char>]) -> i64 {
     // TODO: use a map?
     // TODO: don't bother with tracking, just divide the total by 2?
     let mut seen: Vec<(usize, usize, usize, usize)> = Vec::new();
