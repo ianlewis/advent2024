@@ -12,3 +12,4 @@ https://adventofcode.com/
 - [Day 4: Ceres Search](./day4)
 - [Day 5: Print Queue](./day5)
 - [Day 6: Guard Gallivant](./day6)
+- [Day 7: Bridge Repair](./day7)
