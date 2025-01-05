@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Program day7 prints the sum of possible calibration targets achievable with
+// just the addition and multiplication operators, and the sum of possible
+// calibration targets achievable with addition, multiplication, and
+// concatenation.
+
 use std::error;
 use std::io::{self, BufRead};
 use std::process;
@@ -56,24 +61,37 @@ fn test_num(target: i64, numbers: &[i64], opers: &[fn(i64, i64) -> i64]) -> bool
     false
 }
 
-fn run(r: impl BufRead) -> Result<i64, Box<dyn error::Error>> {
+fn run(r: impl BufRead) -> Result<(i64, i64), Box<dyn error::Error>> {
     let calibrations = read_calibrations(r)?;
 
     let mut total = 0;
+    let mut total2 = 0;
     let opers = [|l, r| l + r, |l, r| l * r];
+    let opers2 = [
+        |l, r| l + r,
+        |l, r| l * r,
+        // Concatenates numbers together.
+        // NOTE: Number of digits in a number n is log_10(n) + 1
+        |l, r| l * 10_i64.pow(((r as f64).log(10.0) as u32) + 1) + r,
+    ];
     for (target, numbers) in calibrations {
         if test_num(target, &numbers, &opers) {
             total += target;
+            total2 += target;
+            continue;
+        }
+        if test_num(target, &numbers, &opers2) {
+            total2 += target;
         }
     }
 
-    Ok(total)
+    Ok((total, total2))
 }
 
 fn main() -> process::ExitCode {
     let stdin = io::stdin();
-    let n = match run(stdin.lock()) {
-        Ok(n) => n,
+    let (n, n2) = match run(stdin.lock()) {
+        Ok((n, n2)) => (n, n2),
         Err(e) => {
             println!("error running: {e:?}");
             return process::ExitCode::from(1);
@@ -81,6 +99,7 @@ fn main() -> process::ExitCode {
     };
 
     println!("{}", n);
+    println!("{}", n2);
 
     process::ExitCode::SUCCESS
 }
@@ -106,8 +125,9 @@ mod tests {
 ",
         );
 
-        let n = run(input.reader())?;
+        let (n, n2) = run(input.reader())?;
         assert_eq!(n, 3749);
+        assert_eq!(n2, 11387);
         Ok(())
     }
 
@@ -115,8 +135,9 @@ mod tests {
     fn test_full_input() -> Result<(), Box<dyn error::Error>> {
         let input_file = fs::File::open("input.in.txt")?;
 
-        let n = run(io::BufReader::new(input_file))?;
+        let (n, n2) = run(io::BufReader::new(input_file))?;
         assert_eq!(n, 66343330034722);
+        assert_eq!(n2, 637696070419031);
         Ok(())
     }
 }
