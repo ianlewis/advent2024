@@ -13,3 +13,4 @@ https://adventofcode.com/
 - [Day 5: Print Queue](./day5)
 - [Day 6: Guard Gallivant](./day6)
 - [Day 7: Bridge Repair](./day7)
+- [Day 8: Resonant Collinearity](./day8)
