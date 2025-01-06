@@ -56,7 +56,7 @@ fn read_map(r: impl BufRead) -> Result<Vec<Vec<char>>, Box<dyn error::Error>> {
     Ok(map)
 }
 
-fn cartesian_product<R: Copy>(vec: Vec<R>) -> Vec<(R, R)> {
+fn cartesian_product<R: Copy>(vec: &[R]) -> Vec<(R, R)> {
     let mut product: Vec<(R, R)> = Vec::new();
 
     for i in 0..vec.len() {
@@ -68,57 +68,102 @@ fn cartesian_product<R: Copy>(vec: Vec<R>) -> Vec<(R, R)> {
     product
 }
 
-type NodeOption = (Option<(usize, usize)>, Option<(usize, usize)>);
+fn calc_first_antinodes(
+    map: &[Vec<char>],
+    l: (usize, usize),
+    r: (usize, usize),
+) -> collections::HashSet<(usize, usize)> {
+    let node1x_r = l.0.checked_add_signed(l.0 as isize - r.0 as isize);
+    let node1y_r = l.1.checked_add_signed(l.1 as isize - r.1 as isize);
+    let node2x_r = r.0.checked_add_signed(r.0 as isize - l.0 as isize);
+    let node2y_r = r.1.checked_add_signed(r.1 as isize - l.1 as isize);
 
-fn calc_nodes(l: (usize, usize), r: (usize, usize)) -> NodeOption {
-    let node1x = l.0.checked_add_signed(l.0 as isize - r.0 as isize);
-    let node1y = l.1.checked_add_signed(l.1 as isize - r.1 as isize);
-    let node2x = r.0.checked_add_signed(r.0 as isize - l.0 as isize);
-    let node2y = r.1.checked_add_signed(r.1 as isize - l.1 as isize);
-
-    let node1 = match (node1x, node1y) {
-        (Some(x), Some(y)) => Some((x, y)),
-        _ => None,
-    };
-
-    let node2 = match (node2x, node2y) {
-        (Some(x), Some(y)) => Some((x, y)),
-        _ => None,
-    };
-
-    (node1, node2)
-}
-
-fn run(r: impl BufRead) -> Result<usize, Box<dyn error::Error>> {
-    let map = Map::new(read_map(r)?);
-
-    let mut nodes = collections::HashSet::new();
-    for (_c, antennas) in map.antennas {
-        for (l, r) in cartesian_product(antennas) {
-            let (node1_o, node2_o) = calc_nodes(l, r);
-            if node1_o.is_some() {
-                let node1 = node1_o.unwrap();
-                if node1.1 < map.map.len() && node1.0 < map.map[node1.1].len() {
-                    nodes.insert((node1.0, node1.1));
-                }
-            }
-
-            if node2_o.is_some() {
-                let node2 = node2_o.unwrap();
-                if node2.1 < map.map.len() && node2.0 < map.map[node2.1].len() {
-                    nodes.insert((node2.0, node2.1));
-                }
-            }
+    let mut antinodes = collections::HashSet::new();
+    if let (Some(x), Some(y)) = (node1x_r, node1y_r) {
+        if y < map.len() && x < map[y].len() {
+            antinodes.insert((x, y));
+        }
+    }
+    if let (Some(x), Some(y)) = (node2x_r, node2y_r) {
+        if y < map.len() && x < map[y].len() {
+            antinodes.insert((x, y));
         }
     }
 
-    Ok(nodes.len())
+    antinodes
+}
+
+fn calc_antinodes(
+    map: &[Vec<char>],
+    l: (usize, usize),
+    r: (usize, usize),
+) -> collections::HashSet<(usize, usize)> {
+    let mut antinodes = collections::HashSet::new();
+
+    // Calculate left antinodes
+    let mut m = 1;
+    loop {
+        let x_r = l.0.checked_add_signed((l.0 as isize - r.0 as isize) * m);
+        let y_r = l.1.checked_add_signed((l.1 as isize - r.1 as isize) * m);
+        if x_r.is_none() || y_r.is_none() {
+            break;
+        }
+        let x = x_r.unwrap();
+        let y = y_r.unwrap();
+        if y >= map.len() || x >= map[y].len() {
+            break;
+        }
+
+        antinodes.insert((x, y));
+        m += 1;
+    }
+
+    // Calculate right antinodes
+    m = 1;
+    loop {
+        let x_r = r.0.checked_add_signed((r.0 as isize - l.0 as isize) * m);
+        let y_r = r.1.checked_add_signed((r.1 as isize - l.1 as isize) * m);
+        if x_r.is_none() || y_r.is_none() {
+            break;
+        }
+
+        let x = x_r.unwrap();
+        let y = y_r.unwrap();
+        if y >= map.len() || x >= map[y].len() {
+            break;
+        }
+
+        antinodes.insert((x, y));
+        m += 1;
+    }
+
+    antinodes
+}
+
+fn run(r: impl BufRead) -> Result<(usize, usize), Box<dyn error::Error>> {
+    let map = Map::new(read_map(r)?);
+
+    let mut first_antinodes = collections::HashSet::new();
+    let mut antinodes = collections::HashSet::new();
+
+    for (_c, antennas) in map.antennas {
+        for (l, r) in cartesian_product(&antennas) {
+            first_antinodes.extend(calc_first_antinodes(&map.map, l, r));
+
+            antinodes.extend(calc_antinodes(&map.map, l, r));
+        }
+
+        // Add all antennas
+        antinodes.extend(antennas);
+    }
+
+    Ok((first_antinodes.len(), antinodes.len()))
 }
 
 fn main() -> process::ExitCode {
     let stdin = io::stdin();
-    let n = match run(stdin.lock()) {
-        Ok(n) => n,
+    let (n, n2) = match run(stdin.lock()) {
+        Ok((n, n2)) => (n, n2),
         Err(e) => {
             println!("error running: {e:?}");
             return process::ExitCode::from(1);
@@ -126,6 +171,7 @@ fn main() -> process::ExitCode {
     };
 
     println!("{}", n);
+    println!("{}", n2);
 
     process::ExitCode::SUCCESS
 }
@@ -154,8 +200,9 @@ mod tests {
 ",
         );
 
-        let n = run(input.reader())?;
+        let (n, n2) = run(input.reader())?;
         assert_eq!(n, 14);
+        assert_eq!(n2, 34);
         Ok(())
     }
 
@@ -163,8 +210,9 @@ mod tests {
     fn test_full_input() -> Result<(), Box<dyn error::Error>> {
         let input_file = fs::File::open("input.in.txt")?;
 
-        let n = run(io::BufReader::new(input_file))?;
+        let (n, n2) = run(io::BufReader::new(input_file))?;
         assert_eq!(n, 371);
+        assert_eq!(n2, 1229);
         Ok(())
     }
 }
