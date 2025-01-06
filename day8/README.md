@@ -115,7 +115,7 @@ of the map.
 Calculate the impact of the signal. How many unique locations within the bounds
 of the map contain an antinode?
 
---- Part Two ---
+## --- Part Two ---
 
 Watching over your shoulder as you work, one of The Historians asks if you took
 the effects of resonant harmonics into your calculations.
