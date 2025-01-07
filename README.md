@@ -14,3 +14,4 @@ https://adventofcode.com/
 - [Day 6: Guard Gallivant](./day6)
 - [Day 7: Bridge Repair](./day7)
 - [Day 8: Resonant Collinearity](./day8)
+- [Day 9: Disk Fragmenter](./day9)
