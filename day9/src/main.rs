@@ -16,6 +16,8 @@ use std::error;
 use std::io::{self, BufRead};
 use std::process;
 
+// read_disk_map_to_blocks reads the disk map and returns a vector of blocks containing their file
+// ID. The block is None if empty.
 fn read_disk_map_to_blocks(mut r: impl BufRead) -> Result<Vec<Option<i64>>, Box<dyn error::Error>> {
     let mut blocks = Vec::new();
     let mut is_file = true;
@@ -73,6 +75,79 @@ fn compact(blocks: &mut [Option<i64>]) {
     }
 }
 
+fn find_space(blocks: &[Option<i64>], size: usize) -> Option<usize> {
+    let mut i = 0;
+    'outer: while i < blocks.len() {
+        // Find a free space.
+        while i < blocks.len() && blocks[i].is_some() {
+            i += 1;
+            continue;
+        }
+
+        // Check if the free space is the appropriate length.
+        if i + size > blocks.len() {
+            break;
+        }
+        for (j, b) in blocks.iter().skip(i).take(size).enumerate() {
+            if b.is_some() {
+                i += j;
+                continue 'outer;
+            }
+        }
+        return Some(i);
+    }
+
+    None
+}
+
+fn defrag(blocks: &mut [Option<i64>]) {
+    // i marks the beginning of where to look for open space.
+    let mut i = 0;
+
+    // j marks the end of where to look for open space and the beginning of file data.
+    let mut j = blocks.len() - 1;
+
+    loop {
+        while i < j && blocks[i].is_some() {
+            i += 1;
+        }
+        while i < j && blocks[j].is_none() {
+            j -= 1;
+        }
+        if i >= j {
+            break;
+        }
+
+        // Find the file start (j) and end (k) locations.
+        let file_id = blocks[j].unwrap();
+        let k = j;
+        while let Some(b) = blocks[j - 1] {
+            if b == file_id {
+                j -= 1;
+            } else {
+                break;
+            }
+        }
+        if i >= j {
+            break;
+        }
+
+        // The file is now at blocks[j..=k]
+        let file_len = k - j + 1;
+        let s = find_space(&blocks[i..j], file_len);
+        if s.is_some() {
+            // We found some open space. Move the file.
+            let s_index = i + s.unwrap();
+            for index in 0..file_len {
+                blocks[s_index + index] = blocks[j + index];
+                blocks[j + index] = None;
+            }
+        }
+
+        j -= 1;
+    }
+}
+
 fn calc_checksum(blocks: &[Option<i64>]) -> i64 {
     let mut checksum = 0;
     for (i, n) in blocks.iter().enumerate() {
@@ -84,15 +159,17 @@ fn calc_checksum(blocks: &[Option<i64>]) -> i64 {
     checksum
 }
 
-fn run(r: impl BufRead) -> Result<i64, Box<dyn error::Error>> {
+fn run(r: impl BufRead) -> Result<(i64, i64), Box<dyn error::Error>> {
     let mut blocks = read_disk_map_to_blocks(r)?;
+    let mut blocks2 = blocks.clone();
     compact(&mut blocks);
-    Ok(calc_checksum(&blocks))
+    defrag(&mut blocks2);
+    Ok((calc_checksum(&blocks), calc_checksum(&blocks2)))
 }
 
 fn main() -> process::ExitCode {
     let stdin = io::stdin();
-    let n = match run(stdin.lock()) {
+    let (n, n2) = match run(stdin.lock()) {
         Ok(n) => n,
         Err(e) => {
             println!("error running: {e:?}");
@@ -101,6 +178,7 @@ fn main() -> process::ExitCode {
     };
 
     println!("{}", n);
+    println!("{}", n2);
 
     process::ExitCode::SUCCESS
 }
@@ -115,8 +193,9 @@ mod tests {
     fn test_run() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from("12345\n");
 
-        let n = run(input.reader())?;
+        let (n, n2) = run(input.reader())?;
         assert_eq!(n, 60);
+        assert_eq!(n2, 132);
         Ok(())
     }
 
@@ -124,8 +203,9 @@ mod tests {
     fn test_example() -> Result<(), Box<dyn error::Error>> {
         let input = Bytes::from("2333133121414131402\n");
 
-        let n = run(input.reader())?;
+        let (n, n2) = run(input.reader())?;
         assert_eq!(n, 1928);
+        assert_eq!(n2, 2858);
         Ok(())
     }
 
@@ -133,8 +213,9 @@ mod tests {
     fn test_full_input() -> Result<(), Box<dyn error::Error>> {
         let input_file = fs::File::open("input.in.txt")?;
 
-        let n = run(io::BufReader::new(input_file))?;
+        let (n, n2) = run(io::BufReader::new(input_file))?;
         assert_eq!(n, 6367087064415);
+        assert_eq!(n2, 6390781891880);
         Ok(())
     }
 }
