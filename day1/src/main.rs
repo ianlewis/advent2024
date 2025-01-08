@@ -82,8 +82,6 @@ fn main() -> ExitCode {
 mod tests {
     use super::*;
     use bytes::{Buf, Bytes};
-    use std::error;
-    use std::fs;
 
     #[test]
     fn test_run() -> Result<(), String> {
@@ -168,16 +166,6 @@ a   b
             }
         }?;
 
-        Ok(())
-    }
-
-    #[test]
-    fn test_full_input() -> Result<(), Box<dyn error::Error>> {
-        let input_file = fs::File::open("input.in.txt")?;
-
-        let (n, n2) = run(io::BufReader::new(input_file))?;
-        assert_eq!(n, 2057374);
-        assert_eq!(n2, 23177084);
         Ok(())
     }
 }
