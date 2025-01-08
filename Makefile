@@ -16,6 +16,8 @@ SHELL := /bin/bash
 OUTPUT_FORMAT ?= $(shell if [ "${GITHUB_ACTIONS}" == "true" ]; then echo "github"; else echo ""; fi)
 REPO_NAME = $(shell basename "$$(pwd)")
 
+SOLUTIONS_REPO ?= ../advent-of-code-solutions
+
 # The help command prints targets in groups. Help documentation in the Makefile
 # uses comments with double hash marks (##). Documentation is printed by the
 # help target in the order in appears in the Makefile.
@@ -204,6 +206,16 @@ unit-tests: ## Run unit tests.
 		for i in day*; do\
 			cargo test --manifest-path "$$i/Cargo.toml";\
 		done
+
+integration-tests: ## Run integration tests.
+	@set -euo pipefail;\
+		for i in day*; do\
+			cargo build --manifest-path "$${i}/Cargo.toml";\
+			SOLUTION=$$("$${i}/target/debug/$${i}" < "$(SOLUTIONS_REPO)/2024/$${i}/input.txt");\
+			EXPECTED="$$(cat "$(SOLUTIONS_REPO)/2024/$${i}/solution.txt")";\
+			[ "$${SOLUTION}" == "$${EXPECTED}" ] || (echo "$${i} failed!" && exit 1);\
+		done;
+
 
 ## Maintenance
 #####################################################################
