@@ -90,7 +90,7 @@ jobs:
         run: |
           pwd
           ls ../advent-of-code-solutions
-          ls ../advent-of-code-solutions/2024
+          ls ../advent-of-code-solutions/2024/day1
           make integration-tests
 
   # formatting
