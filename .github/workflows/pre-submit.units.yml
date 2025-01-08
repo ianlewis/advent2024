@@ -89,7 +89,8 @@ jobs:
       - working-directory: "advent2024"
         run: |
           pwd
-          ls ../
+          ls ../advent-of-code-solutions
+          ls ../advent-of-code-solutions/2024
           make integration-tests
 
   # formatting
