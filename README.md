@@ -15,3 +15,4 @@ https://adventofcode.com/
 - [Day 7: Bridge Repair](./day7)
 - [Day 8: Resonant Collinearity](./day8)
 - [Day 9: Disk Fragmenter](./day9)
+- [Day 10: Hoof It](./day10)
