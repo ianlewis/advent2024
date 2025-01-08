@@ -181,4 +181,4 @@ topographic map is 81.
 
 You're not sure how, but the reindeer seems to have crafted some tiny flags out
 of toothpicks and bits of paper and is using them to mark trailheads on your
-topographic map. What is the sum of the ratings of all trailheads?	
+topographic map. What is the sum of the ratings of all trailheads?
