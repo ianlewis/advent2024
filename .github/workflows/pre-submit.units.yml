@@ -78,6 +78,7 @@ jobs:
         with:
           repository: "ianlewis/advent-of-code-solutions"
           path: "advent-of-code-solutions"
+          token: "${SOLUTIONS_TOKEN}"
 
       - name: Install Rust toolchain
         run: |
