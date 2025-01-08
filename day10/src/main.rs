@@ -36,8 +36,9 @@ fn read_map(r: impl BufRead) -> Result<Vec<Vec<Option<i64>>>, Box<dyn error::Err
     Ok(map)
 }
 
-fn find_trails(map: &[Vec<Option<i64>>], x: usize, y: usize) -> usize {
-    let mut trails = collections::HashSet::new();
+fn find_trails(map: &[Vec<Option<i64>>], x: usize, y: usize) -> (usize, usize) {
+    let mut distinct_trails = 0;
+    let mut unique_trailends = collections::HashSet::new();
 
     let dirs: [(isize, isize); 4] = [
         (0, -1), // up
@@ -55,7 +56,8 @@ fn find_trails(map: &[Vec<Option<i64>>], x: usize, y: usize) -> usize {
             continue;
         }
         if expected_num == 9 {
-            trails.insert((cur_x, cur_y));
+            distinct_trails += 1;
+            unique_trailends.insert((cur_x, cur_y));
             continue;
         }
 
@@ -83,29 +85,29 @@ fn find_trails(map: &[Vec<Option<i64>>], x: usize, y: usize) -> usize {
         }
     }
 
-    trails.len()
+    (unique_trailends.len(), distinct_trails)
 }
 
-fn score_trailheads(map: &[Vec<Option<i64>>]) -> usize {
-    let mut score = 0;
+fn run(r: impl BufRead) -> Result<(usize, usize), Box<dyn error::Error>> {
+    let map = read_map(r)?;
+
+    let mut total_score = 0;
+    let mut total_score2 = 0;
 
     for (y, col) in map.iter().enumerate() {
         for (x, _loc) in col.iter().enumerate() {
-            score += find_trails(map, x, y);
+            let (score, score2) = find_trails(&map, x, y);
+            total_score += score;
+            total_score2 += score2;
         }
     }
 
-    score
-}
-
-fn run(r: impl BufRead) -> Result<usize, Box<dyn error::Error>> {
-    let map = read_map(r)?;
-    Ok(score_trailheads(&map))
+    Ok((total_score, total_score2))
 }
 
 fn main() -> process::ExitCode {
     let stdin = io::stdin();
-    let n = match run(stdin.lock()) {
+    let (n, n2) = match run(stdin.lock()) {
         Ok(n) => n,
         Err(e) => {
             println!("error running: {e:?}");
@@ -114,6 +116,7 @@ fn main() -> process::ExitCode {
     };
 
     println!("{}", n);
+    println!("{}", n2);
 
     process::ExitCode::SUCCESS
 }
@@ -137,8 +140,9 @@ mod tests {
 ",
         );
 
-        let n = run(input.reader())?;
+        let (n, n2) = run(input.reader())?;
         assert_eq!(n, 36);
+        assert_eq!(n2, 81);
         Ok(())
     }
 }
