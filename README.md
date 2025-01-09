@@ -16,3 +16,4 @@ https://adventofcode.com/
 - [Day 8: Resonant Collinearity](./day8)
 - [Day 9: Disk Fragmenter](./day9)
 - [Day 10: Hoof It](./day10)
+- [Day 11: Plutonian Pebbles](./day11)
