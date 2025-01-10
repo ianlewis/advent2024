@@ -17,3 +17,4 @@ https://adventofcode.com/
 - [Day 9: Disk Fragmenter](./day9)
 - [Day 10: Hoof It](./day10)
 - [Day 11: Plutonian Pebbles](./day11)
+- [Day 12: Garden Groups](./day12)
