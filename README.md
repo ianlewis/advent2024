@@ -18,3 +18,5 @@ https://adventofcode.com/
 - [Day 10: Hoof It](./day10)
 - [Day 11: Plutonian Pebbles](./day11)
 - [Day 12: Garden Groups](./day12)
+- [Day 13: Claw Contraption](./day13)
+- [Day 14: Restroom Redoubt](./day14)
