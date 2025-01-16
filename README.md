@@ -23,3 +23,4 @@ https://adventofcode.com/
 - [Day 15: Warehouse Woes](./day15)
 - [Day 16: Reindeer Maze](./day16)
 - [Day 17: Chronospatial Computer](./day17)
+- [Day 18: RAM Run](./day18)
