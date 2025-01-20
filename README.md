@@ -25,3 +25,4 @@ https://adventofcode.com/
 - [Day 17: Chronospatial Computer](./day17)
 - [Day 18: RAM Run](./day18)
 - [Day 19: Linen Layout](./day19)
+- [Day 20: Race Condition](./day20)
