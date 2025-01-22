@@ -48,11 +48,9 @@ struct Keypad {
 
 impl Keypad {
     pub fn new(map: collections::HashMap<char, Pos>) -> Self {
-        let _pos_map = collections::HashMap::from_iter(map.iter().map(|(k, v)| (*v, *k)));
-
         Keypad {
+            _pos_map: map.iter().map(|(k, v)| (*v, *k)).collect(),
             _map: map.into_iter().collect(),
-            _pos_map,
             _paths_cache: collections::HashMap::new(),
         }
     }
