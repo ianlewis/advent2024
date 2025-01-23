@@ -27,3 +27,4 @@ https://adventofcode.com/
 - [Day 19: Linen Layout](./day19)
 - [Day 20: Race Condition](./day20)
 - [Day 21: Keypad Conundrum](./day21)
+- [Day 22: Monkey Market](./day22)
