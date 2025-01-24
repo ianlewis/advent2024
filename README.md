@@ -28,3 +28,4 @@ https://adventofcode.com/
 - [Day 20: Race Condition](./day20)
 - [Day 21: Keypad Conundrum](./day21)
 - [Day 22: Monkey Market](./day22)
+- [Day 23: LAN Party](./day23)
